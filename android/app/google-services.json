@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "362321706918",
+    "project_id": "homefinder-flutter-project",
+    "storage_bucket": "homefinder-flutter-project.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:362321706918:android:d895f75f8c11d635181967",
+        "android_client_info": {
+          "package_name": "com.example.homefinder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "362321706918-94bgu9p82e13og51p1be02th8do69ubh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdRCJxaLVZDkf9G3f_uUDahgYn2hdytmk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "362321706918-94bgu9p82e13og51p1be02th8do69ubh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
