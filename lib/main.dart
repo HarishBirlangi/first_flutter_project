@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:homefinder/views/login_view.dart';
+import 'package:homefinder/views/main_view.dart';
 import 'views/register_view.dart';
 
 void main() {
@@ -18,9 +19,11 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: const LoginView(),
+      debugShowCheckedModeBanner: false,
       routes: {
         RegisterView.routeName: (context) => const RegisterView(),
         LoginView.routeName: (context) => const LoginView(),
+        MainView.routeName: (context) => const MainView(),
       },
     );
   }

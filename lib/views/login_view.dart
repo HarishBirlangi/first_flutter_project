@@ -1,7 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:homefinder/firebase_options.dart';
+import 'package:homefinder/utilities/show_alert_dialog.dart';
+import 'package:homefinder/views/main_view.dart';
 import 'package:homefinder/views/register_view.dart';
 
 class LoginView extends StatefulWidget {
@@ -44,11 +47,27 @@ class _LoginViewState extends State<LoginView> {
             switch (snapshot.connectionState) {
               case ConnectionState.done:
                 final user = FirebaseAuth.instance.currentUser;
-                if (user?.emailVerified ?? false) {
+                // if (user?.emailVerified ?? false) {
+                if (user != null) {
                   print('You are a verified user');
-                } else {
-                  print('Verify your account');
+                  SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
+                    Navigator.of(context).pushNamed(MainView.routeName);
+                  });
                 }
+                // else if (user?.emailVerified == false) {
+                //   print('Verify your account');
+                //   return TextButton(
+                //       onPressed: () async {
+                //         if (user != null && !user.emailVerified) {
+                //           await user.sendEmailVerification();
+                //           ScaffoldMessenger.of(context).showSnackBar(
+
+                //               const SnackBar(
+                //                   content: Text("Verification email sent")));
+                //         }
+                //       },
+                //       child: const Text('Verify your email'));
+                // }
                 return Padding(
                   padding: const EdgeInsets.all(20),
                   child: Container(
@@ -83,21 +102,21 @@ class _LoginViewState extends State<LoginView> {
                               await FirebaseAuth.instance
                                   .signInWithEmailAndPassword(
                                       email: email, password: password);
-                              print("Logged in");
+                              SchedulerBinding.instance
+                                  .addPostFrameCallback((timeStamp) {
+                                Navigator.of(context)
+                                    .pushNamed(MainView.routeName);
+                              });
                             } on FirebaseAuthException catch (e) {
                               if (e.code == 'user-not-found') {
-                                const AlertDialog(
-                                  title: Text('Invalid Email'),
-                                );
-                                print("wrong email");
+                                showAlertDialog(context, 'user-not-found');
                               } else if (e.code == 'wrong-password') {
-                                const AlertDialog(
-                                  title: Text('Invalid Email'),
-                                );
-                                print("wrong password");
+                                showAlertDialog(context, 'wrong-password');
                               } else {
-                                print("Something wrong");
+                                showAlertDialog(context, 'Error: ${e.code}');
                               }
+                            } catch (e) {
+                              showAlertDialog(context, e.toString());
                             }
                           },
                           child: const Text('Login'),
