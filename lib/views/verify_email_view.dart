@@ -1,5 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:homefinder/services/auth/auth_service.dart';
 import 'package:homefinder/views/login_view.dart';
 
 class VerifyEmail extends StatelessWidget {
@@ -17,14 +17,13 @@ class VerifyEmail extends StatelessWidget {
           const Text('Verify your email to continue'),
           TextButton(
             onPressed: () async {
-              final user = FirebaseAuth.instance.currentUser;
-              await user?.sendEmailVerification();
+              await AuthService.firebase().sendEmailVerification();
             },
             child: const Text('Send email verifcation'),
           ),
           TextButton(
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+              await AuthService.firebase().logOut();
               Navigator.of(context).pushNamedAndRemoveUntil(
                   LoginView.routeName, (route) => false);
             },

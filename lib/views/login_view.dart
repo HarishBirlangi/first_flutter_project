@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:homefinder/services/auth/auth_exceptions.dart';
+import 'package:homefinder/services/auth/auth_service.dart';
 import 'package:homefinder/utilities/show_alert_dialog.dart';
 import 'package:homefinder/views/main_view.dart';
 import 'package:homefinder/views/register_view.dart';
@@ -69,10 +70,10 @@ class _LoginViewState extends State<LoginView> {
                   final email = _emailid.text;
                   final password = _password.text;
                   try {
-                    await FirebaseAuth.instance.signInWithEmailAndPassword(
-                        email: email, password: password);
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user?.emailVerified ?? false) {
+                    await AuthService.firebase()
+                        .logIn(email: email, password: password);
+                    final user = AuthService.firebase().currentUser;
+                    if (user?.isEmailVerified ?? false) {
                       SchedulerBinding.instance
                           .addPostFrameCallback((timeStamp) {
                         Navigator.of(context).pushNamed(MainView.routeName);
@@ -83,16 +84,12 @@ class _LoginViewState extends State<LoginView> {
                         Navigator.of(context).pushNamed(VerifyEmail.routeName);
                       });
                     }
-                  } on FirebaseAuthException catch (e) {
-                    if (e.code == 'user-not-found') {
-                      showAlertDialog(context, 'user-not-found');
-                    } else if (e.code == 'wrong-password') {
-                      showAlertDialog(context, 'wrong-password');
-                    } else {
-                      showAlertDialog(context, 'Error: ${e.code}');
-                    }
-                  } catch (e) {
-                    showAlertDialog(context, e.toString());
+                  } on UserNotFoundExceptoin {
+                    showAlertDialog(context, 'User not found');
+                  } on WrongPassword {
+                    showAlertDialog(context, 'Wrong password');
+                  } on GenericAuthException {
+                    showAlertDialog(context, 'Authentication error');
                   }
                 },
                 child: const Text('Login'),
