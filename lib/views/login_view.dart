@@ -3,7 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:homefinder/services/auth/auth_exceptions.dart';
 import 'package:homefinder/services/auth/auth_service.dart';
 import 'package:homefinder/utilities/show_alert_dialog.dart';
-import 'package:homefinder/views/main_view.dart';
+import 'package:homefinder/views/notes/notes_view.dart';
 import 'package:homefinder/views/register_view.dart';
 import 'package:homefinder/views/verify_email_view.dart';
 
@@ -76,7 +76,7 @@ class _LoginViewState extends State<LoginView> {
                     if (user?.isEmailVerified ?? false) {
                       SchedulerBinding.instance
                           .addPostFrameCallback((timeStamp) {
-                        Navigator.of(context).pushNamed(MainView.routeName);
+                        Navigator.of(context).pushNamed(NotesView.routeName);
                       });
                     } else {
                       SchedulerBinding.instance
