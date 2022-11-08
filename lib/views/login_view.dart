@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:homefinder/services/auth/auth_exceptions.dart';
 import 'package:homefinder/services/auth/auth_service.dart';
-import 'package:homefinder/utilities/show_alert_dialog.dart';
+import 'package:homefinder/utilities/dialoges/error_dialog.dart';
 import 'package:homefinder/views/notes/notes_view.dart';
 import 'package:homefinder/views/register_view.dart';
 import 'package:homefinder/views/verify_email_view.dart';
@@ -85,11 +85,11 @@ class _LoginViewState extends State<LoginView> {
                       });
                     }
                   } on UserNotFoundExceptoin {
-                    showAlertDialog(context, 'User not found');
+                    showErrorDialog(context: context, title: 'User not found');
                   } on WrongPassword {
-                    showAlertDialog(context, 'Wrong password');
+                    showErrorDialog(context: context, title: 'Wrong password');
                   } on GenericAuthException {
-                    showAlertDialog(context, 'Authentication error');
+                    showErrorDialog(context: context, title: 'Authentication error');
                   }
                 },
                 child: const Text('Login'),
