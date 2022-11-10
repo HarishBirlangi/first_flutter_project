@@ -1,304 +1,329 @@
-import 'dart:async';
-import 'package:flutter/cupertino.dart';
-import 'package:homefinder/services/auth/auth_exceptions.dart';
-import 'package:homefinder/services/crud/crud_exceptions.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
+// import 'dart:async';
+// import 'package:flutter/cupertino.dart';
+// import 'package:homefinder/extensions/list/filter.dart';
+// import 'package:homefinder/services/auth/auth_exceptions.dart';
+// import 'package:homefinder/services/crud/crud_exceptions.dart';
+// import 'package:path/path.dart';
+// import 'package:path_provider/path_provider.dart';
+// import 'package:sqflite/sqflite.dart';
 
-class NoteService {
-  Database? _db;
+// class NoteService {
+//   Database? _db;
 
-  List<DatabaseNote> _notes = [];
+//   List<DatabaseNote> _notes = [];
 
-  late final StreamController<List<DatabaseNote>> _noteStreamController;
+//   DatabaseUser? _user;
 
-  static final NoteService _shared = NoteService._sharedInstance();
-  NoteService._sharedInstance() {
-    _noteStreamController = StreamController<List<DatabaseNote>>.broadcast(
-      onListen: () {
-        _noteStreamController.sink.add(_notes);
-      },
-    );
-  }
-  factory NoteService() => _shared;
+//   late final StreamController<List<DatabaseNote>> _noteStreamController;
 
-  Stream<List<DatabaseNote>> get allNotes => _noteStreamController.stream;
+//   static final NoteService _shared = NoteService._sharedInstance();
+//   NoteService._sharedInstance() {
+//     _noteStreamController = StreamController<List<DatabaseNote>>.broadcast(
+//       onListen: () {
+//         _noteStreamController.sink.add(_notes);
+//       },
+//     );
+//   }
+//   factory NoteService() => _shared;
 
-  Future<DatabaseUser> getOrCreateUser({required email}) async {
-    try {
-      final user = await getUser(email: email);
-      return user;
-    } on CouldNotFindUser {
-      final createdUser = await createUser(email: email);
-      return createdUser;
-    } catch (e) {
-      rethrow;
-    }
-  }
+//   Stream<List<DatabaseNote>> get allNotes =>
+//       _noteStreamController.stream.filter((note) {
+//         final currentUser = _user;
+//         if (currentUser != null) {
+//           return note.userId == currentUser.id;
+//         } else {
+//           throw UserShouldBeSetBeforeReadingAllNotes();
+//         }
+//       });
 
-  Future<void> _cacheNotes() async {
-    final allNotes = await getAllNotes();
-    _notes = allNotes.toList();
-    _noteStreamController.add(_notes);
-  }
+//   Future<DatabaseUser> getOrCreateUser({
+//     required String email,
+//     bool setAsCurrentUser = true,
+//   }) async {
+//     try {
+//       final user = await getUser(email: email);
+//       if (setAsCurrentUser) {
+//         _user = user;
+//       }
+//       return user;
+//     } on CouldNotFindUser {
+//       final createdUser = await createUser(email: email);
+//       if (setAsCurrentUser) {
+//         _user = createdUser;
+//       }
+//       return createdUser;
+//     } catch (e) {
+//       rethrow;
+//     }
+//   }
 
-  Database _getDatabaseOrThrow() {
-    final db = _db;
-    if (db == null) {
-      throw DatabaseIsNotOpen();
-    } else {
-      return db;
-    }
-  }
+//   Future<void> _cacheNotes() async {
+//     final allNotes = await getAllNotes();
+//     _notes = allNotes.toList();
+//     _noteStreamController.add(_notes);
+//   }
 
-  Future<void> deleteUser({required String email}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final deleteCount = await db.delete(
-      userTable,
-      where: 'email = ?',
-      whereArgs: [email.toLowerCase()],
-    );
-    if (deleteCount != 1) {
-      throw CouldNotDeleteUser();
-    }
-  }
+//   Database _getDatabaseOrThrow() {
+//     final db = _db;
+//     if (db == null) {
+//       throw DatabaseIsNotOpen();
+//     } else {
+//       return db;
+//     }
+//   }
 
-  Future<DatabaseUser> createUser({required String email}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final emailCheck = await db.query(
-      userTable,
-      limit: 1,
-      where: 'email = ?',
-      whereArgs: [email.toLowerCase()],
-    );
+//   Future<void> deleteUser({required String email}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final deleteCount = await db.delete(
+//       userTable,
+//       where: 'email = ?',
+//       whereArgs: [email.toLowerCase()],
+//     );
+//     if (deleteCount != 1) {
+//       throw CouldNotDeleteUser();
+//     }
+//   }
 
-    if (emailCheck.isNotEmpty) {
-      throw EmailAlredyExists();
-    }
+//   Future<DatabaseUser> createUser({required String email}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final emailCheck = await db.query(
+//       userTable,
+//       limit: 1,
+//       where: 'email = ?',
+//       whereArgs: [email.toLowerCase()],
+//     );
 
-    final userId = await db.insert(
-      userTable,
-      {emailColumn: email.toLowerCase()},
-    );
+//     if (emailCheck.isNotEmpty) {
+//       throw EmailAlredyExists();
+//     }
 
-    return DatabaseUser(id: userId, email: email);
-  }
+//     final userId = await db.insert(
+//       userTable,
+//       {emailColumn: email.toLowerCase()},
+//     );
 
-  Future<DatabaseUser> getUser({required String email}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final emailCheck = await db.query(
-      userTable,
-      limit: 1,
-      where: 'email = ?',
-      whereArgs: [email.toLowerCase()],
-    );
-    if (emailCheck.isEmpty) {
-      throw CouldNotFindUser();
-    } else {
-      return DatabaseUser.fromRow(emailCheck.first);
-    }
-  }
+//     return DatabaseUser(id: userId, email: email);
+//   }
 
-  Future<DatabaseNote> createNote({required DatabaseUser owner}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final dbuser = await getUser(email: owner.email);
-    if (dbuser != owner) {
-      throw CouldNotFindUser();
-    }
+//   Future<DatabaseUser> getUser({required String email}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final emailCheck = await db.query(
+//       userTable,
+//       limit: 1,
+//       where: 'email = ?',
+//       whereArgs: [email.toLowerCase()],
+//     );
+//     if (emailCheck.isEmpty) {
+//       throw CouldNotFindUser();
+//     } else {
+//       return DatabaseUser.fromRow(emailCheck.first);
+//     }
+//   }
 
-    const text = '';
-    final noteId = await db.insert(noteTable, {
-      userIdColumn: owner.id,
-      textColumn: text,
-      isSyncedWithCloudColumn: 1,
-    });
+//   Future<DatabaseNote> createNote({required DatabaseUser owner}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final dbuser = await getUser(email: owner.email);
+//     if (dbuser != owner) {
+//       throw CouldNotFindUser();
+//     }
 
-    final note = DatabaseNote(
-      id: noteId,
-      userId: owner.id,
-      text: text,
-      isSyncedWithCloud: true,
-    );
+//     const text = '';
+//     final noteId = await db.insert(noteTable, {
+//       userIdColumn: owner.id,
+//       textColumn: text,
+//       isSyncedWithCloudColumn: 1,
+//     });
 
-    _notes.add(note);
-    _noteStreamController.add(_notes);
+//     final note = DatabaseNote(
+//       id: noteId,
+//       userId: owner.id,
+//       text: text,
+//       isSyncedWithCloud: true,
+//     );
 
-    return note;
-  }
+//     _notes.add(note);
+//     _noteStreamController.add(_notes);
 
-  Future<void> deleteNote({required int id}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final deleteCount = await db.delete(
-      noteTable,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+//     return note;
+//   }
 
-    if (deleteCount == 0) {
-      throw CouldNotDeleteNote();
-    } else {
-      _notes.removeWhere((note) => note.id == id);
-      _noteStreamController.add(_notes);
-    }
-  }
+//   Future<void> deleteNote({required int id}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final deleteCount = await db.delete(
+//       noteTable,
+//       where: 'id = ?',
+//       whereArgs: [id],
+//     );
 
-  Future<int> deleteAllNote() async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final noOfDeletions = await db.delete(noteTable);
-    _notes = [];
-    _noteStreamController.add(_notes);
-    return noOfDeletions;
-  }
+//     if (deleteCount == 0) {
+//       throw CouldNotDeleteNote();
+//     } else {
+//       _notes.removeWhere((note) => note.id == id);
+//       _noteStreamController.add(_notes);
+//     }
+//   }
 
-  Future<DatabaseNote> getNote({required int id}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final notes = await db.query(
-      noteTable,
-      limit: 1,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+//   Future<int> deleteAllNote() async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final noOfDeletions = await db.delete(noteTable);
+//     _notes = [];
+//     _noteStreamController.add(_notes);
+//     return noOfDeletions;
+//   }
 
-    if (notes.isEmpty) {
-      throw CouldNotFindNotes();
-    } else {
-      return DatabaseNote.fromRow(notes.first);
-    }
-  }
+//   Future<DatabaseNote> getNote({required int id}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final notes = await db.query(
+//       noteTable,
+//       limit: 1,
+//       where: 'id = ?',
+//       whereArgs: [id],
+//     );
 
-  Future<Iterable<DatabaseNote>> getAllNotes() async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    final notes = await db.query(noteTable);
-    return notes.map((e) => DatabaseNote.fromRow(e));
-  }
+//     if (notes.isEmpty) {
+//       throw CouldNotFindNotes();
+//     } else {
+//       return DatabaseNote.fromRow(notes.first);
+//     }
+//   }
 
-  Future<DatabaseNote> updateNote(
-      {required DatabaseNote note, required String text}) async {
-    await _ensureDbIsOpen();
-    final db = _getDatabaseOrThrow();
-    await getNote(id: note.id);
+//   Future<Iterable<DatabaseNote>> getAllNotes() async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     final notes = await db.query(noteTable);
+//     return notes.map((e) => DatabaseNote.fromRow(e));
+//   }
 
-    final updateCount = await db.update(noteTable, {
-      textColumn: text,
-      isSyncedWithCloudColumn: 0,
-    });
+//   Future<DatabaseNote> updateNote(
+//       {required DatabaseNote note, required String text}) async {
+//     await _ensureDbIsOpen();
+//     final db = _getDatabaseOrThrow();
+//     await getNote(id: note.id);
 
-    if (updateCount == 0) {
-      throw CouldNotUpdateNote();
-    } else {
-      final updatedNote = await getNote(id: note.id);
-      _notes.removeWhere((note) => note.id == updatedNote.id);
-      _notes.add(updatedNote);
-      _noteStreamController.add(_notes);
-      return updatedNote;
-    }
-  }
+//     final updateCount = await db.update(
+//       noteTable,
+//       {
+//         textColumn: text,
+//         isSyncedWithCloudColumn: 0,
+//       },
+//       where: 'id = ?',
+//       whereArgs: [note.id],
+//     );
 
-  Future<void> close() async {
-    final db = _db;
-    if (db == null) {
-      throw DatabaseIsNotOpen();
-    } else {
-      await db.close();
-      _db = null;
-    }
-  }
+//     if (updateCount == 0) {
+//       throw CouldNotUpdateNote();
+//     } else {
+//       final updatedNote = await getNote(id: note.id);
+//       _notes.removeWhere((note) => note.id == updatedNote.id);
+//       _notes.add(updatedNote);
+//       _noteStreamController.add(_notes);
+//       return updatedNote;
+//     }
+//   }
 
-  Future<void> _ensureDbIsOpen() async {
-    try {
-      await open();
-    } on DatabaseAlredyOpenException {}
-  }
+//   Future<void> close() async {
+//     final db = _db;
+//     if (db == null) {
+//       throw DatabaseIsNotOpen();
+//     } else {
+//       await db.close();
+//       _db = null;
+//     }
+//   }
 
-  Future<void> open() async {
-    if (_db != null) {
-      throw DatabaseAlredyOpenException();
-    }
-    try {
-      final docsPath = await getApplicationDocumentsDirectory();
-      final dbPath = join(docsPath.path, dbName);
-      final db = await openDatabase(dbPath);
-      _db = db;
+//   Future<void> _ensureDbIsOpen() async {
+//     try {
+//       await open();
+//     } on DatabaseAlredyOpenException {}
+//   }
 
-      await db.execute(createUserTable);
-      await db.execute(createNoteTable);
-      await _cacheNotes();
-    } on MissingPlatformDirectoryException {
-      throw UnableToGetDocumnetsDirectory();
-    }
-  }
-}
+//   Future<void> open() async {
+//     if (_db != null) {
+//       throw DatabaseAlredyOpenException();
+//     }
+//     try {
+//       final docsPath = await getApplicationDocumentsDirectory();
+//       final dbPath = join(docsPath.path, dbName);
+//       final db = await openDatabase(dbPath);
+//       _db = db;
 
-@immutable
-class DatabaseUser {
-  final int id;
-  final String email;
+//       await db.execute(createUserTable);
+//       await db.execute(createNoteTable);
+//       await _cacheNotes();
+//     } on MissingPlatformDirectoryException {
+//       throw UnableToGetDocumnetsDirectory();
+//     }
+//   }
+// }
 
-  const DatabaseUser({required this.id, required this.email});
+// @immutable
+// class DatabaseUser {
+//   final int id;
+//   final String email;
 
-  DatabaseUser.fromRow(Map<String, Object?> map)
-      : id = map[idColumn] as int,
-        email = map[emailColumn] as String;
+//   const DatabaseUser({required this.id, required this.email});
 
-  @override
-  String toString() => 'Person, ID=$id, email=$email';
+//   DatabaseUser.fromRow(Map<String, Object?> map)
+//       : id = map[idColumn] as int,
+//         email = map[emailColumn] as String;
 
-  @override
-  bool operator ==(covariant DatabaseUser other) => id == other.id;
+//   @override
+//   String toString() => 'Person, ID=$id, email=$email';
 
-  @override
-  int get hashCode => id.hashCode;
-}
+//   @override
+//   bool operator ==(covariant DatabaseUser other) => id == other.id;
 
-class DatabaseNote {
-  final int id;
-  final int userId;
-  final String text;
-  final bool isSyncedWithCloud;
+//   @override
+//   int get hashCode => id.hashCode;
+// }
 
-  DatabaseNote(
-      {required this.id,
-      required this.userId,
-      required this.text,
-      required this.isSyncedWithCloud});
+// class DatabaseNote {
+//   final int id;
+//   final int userId;
+//   final String text;
+//   final bool isSyncedWithCloud;
 
-  DatabaseNote.fromRow(Map<String, Object?> map)
-      : id = map[idColumn] as int,
-        userId = map[userIdColumn] as int,
-        text = map[textColumn] as String,
-        isSyncedWithCloud =
-            (map[isSyncedWithCloudColumn] as int) == 1 ? true : false;
-}
+//   DatabaseNote(
+//       {required this.id,
+//       required this.userId,
+//       required this.text,
+//       required this.isSyncedWithCloud});
 
-const dbName = 'notes.db';
-const noteTable = 'note';
-const userTable = 'user';
-const idColumn = 'id';
-const emailColumn = 'email';
-const userIdColumn = 'user_id';
-const textColumn = 'text';
-const isSyncedWithCloudColumn = 'is_synced_with_cloud';
-const createUserTable = ''' 
-      CREATE TABLE IF NOT EXISTS "user"(
-        "id" INTEGER NOT NULL,
-        "email" TEXT NOT NULL UNIQUE,
-        PRIMARY KEY("id" AUTOINCREMENT)
-      ); ''';
-const createNoteTable = ''' 
-      CREATE TABLE IF NOT EXISTS "note"(
-        "id" INTEGER NOT NULL,
-        "user_id" INTEGER NOT NULL,
-        "text" TEXT,
-        "is_synced_with_cloud" INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY("user_id") REFERENCES "user"("id"),
-        PRIMARY KEY("id" AUTOINCREMENT)
-      ); ''';
+//   DatabaseNote.fromRow(Map<String, Object?> map)
+//       : id = map[idColumn] as int,
+//         userId = map[userIdColumn] as int,
+//         text = map[textColumn] as String,
+//         isSyncedWithCloud =
+//             (map[isSyncedWithCloudColumn] as int) == 1 ? true : false;
+// }
+
+// const dbName = 'notes.db';
+// const noteTable = 'note';
+// const userTable = 'user';
+// const idColumn = 'id';
+// const emailColumn = 'email';
+// const userIdColumn = 'user_id';
+// const textColumn = 'text';
+// const isSyncedWithCloudColumn = 'is_synced_with_cloud';
+// const createUserTable = ''' 
+//       CREATE TABLE IF NOT EXISTS "user"(
+//         "id" INTEGER NOT NULL,
+//         "email" TEXT NOT NULL UNIQUE,
+//         PRIMARY KEY("id" AUTOINCREMENT)
+//       ); ''';
+// const createNoteTable = ''' 
+//       CREATE TABLE IF NOT EXISTS "note"(
+//         "id" INTEGER NOT NULL,
+//         "user_id" INTEGER NOT NULL,
+//         "text" TEXT,
+//         "is_synced_with_cloud" INTEGER NOT NULL DEFAULT 0,
+//         FOREIGN KEY("user_id") REFERENCES "user"("id"),
+//         PRIMARY KEY("id" AUTOINCREMENT)
+//       ); ''';
